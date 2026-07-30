@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte de Trazabilidad Contable y Facturación</title>
+    <style>
+        @page { size: letter landscape; margin: 15mm; }
+        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 11px; color: #333; margin: 0; }
+        .header { border-bottom: 2px solid #0d6efd; padding-bottom: 10px; margin-bottom: 15px; }
+        .title { font-size: 18px; font-weight: bold; color: #0d6efd; }
+        .subtitle { font-size: 11px; color: #6c757d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background-color: #0d6efd; color: white; padding: 6px; font-size: 10px; text-align: left; }
+        td { padding: 6px; border-bottom: 1px solid #dee2e6; font-size: 10px; }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+        .badge { padding: 3px 6px; border-radius: 3px; font-weight: bold; font-size: 9px; background-color: #e9ecef; }
+        .footer { margin-top: 20px; font-size: 9px; text-align: right; color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">CRYPCHANGE HOLDING - REPORTE DE TRAZABILIDAD CONTABLE Y FACTURACIÓN</div>
+        <div class="subtitle">Consolidado general de facturas, comprobantes y pagos adjudicados a proveedores</div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>N° Ticket / Ref</th>
+                <th>Fecha Pago</th>
+                <th>Proveedor Adjudicado</th>
+                <th>RIF Proveedor</th>
+                <th>Empresa Destino</th>
+                <th>Monto Pagado ($)</th>
+                <th>Estado Adjuntos</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pago in pagos %}
+            <tr>
+                <td><strong>#{{ pago.solicitud.ticket_glpi }}</strong></td>
+                <td>{{ pago.fecha_pago|date:"d/m/Y" }}</td>
+                <td><strong>{{ pago.proveedor.nombre_empresa }}</strong></td>
+                <td>{{ pago.proveedor.rif }}</td>
+                <td>{{ pago.solicitud.empresa_destino.nombre }}</td>
+                <td><strong>${{ pago.monto_pagado }}</strong></td>
+                <td>
+                    {% if pago.factura and pago.comprobante_pago %}
+                        Factura + Comprobante
+                    {% elif pago.factura %}
+                        Solo Factura
+                    {% elif pago.comprobante_pago %}
+                        Solo Comprobante
+                    {% else %}
+                        Sin Adjuntos
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        Generado el {% now "d/m/Y H:i" %} - Sistema de Control Financiero
+    </div>
+</body>
+</html>

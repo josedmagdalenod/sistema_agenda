@@ -1,0 +1,194 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card shadow border-0">
+    <!-- Encabezado con Botón de Exportación y Filtros -->
+    <div class="card-header bg-white py-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-file-invoice-dollar me-2"></i>Trazabilidad de Facturas y Comprobantes</h5>
+            
+            
+        </div>
+
+        <div class="row align-items-center g-3">
+            <!-- Filtro por Empresa -->
+            <div class="col-md-4">
+                <select id="filtroEmpresaFact" class="form-select form-select-sm" onchange="filtrarFacturas()">
+                    <option value="">-- Todas las Empresas --</option>
+                    {% for emp in empresas %}
+                        <option value="{{ emp.nombre }}">{{ emp.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Filtro por Proveedor -->
+            <div class="col-md-4">
+                <select id="filtroProvFact" class="form-select form-select-sm" onchange="filtrarFacturas()">
+                    <option value="">-- Todos los Proveedores --</option>
+                    {% for prov in proveedores %}
+                        <option value="{{ prov.nombre_empresa }}">{{ prov.nombre_empresa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Buscador -->
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                    <input type="text" id="buscarFact" class="form-control" onkeyup="filtrarFacturas()" placeholder="Buscar ticket, proveedor...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla Principal de Facturas -->
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tablaFacturas">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ticket / Ref.</th>
+                        <th>Fecha Pago</th>
+                        <th>Proveedor Adjudicado</th>
+                        <th>Empresa Destino</th>
+                        <th>Monto Pagado ($)</th>
+                        <th class="text-center">Soportes Adjuntos</th>
+                        <th class="text-center">Ficha / Auditoría</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                    <tr>
+                        <td>
+                            <strong class="text-dark">#{{ pago.solicitud.ticket_glpi }}</strong>
+                            <div class="small text-muted">{{ pago.solicitud.titulo_requerimiento }}</div>
+                        </td>
+                        <td><small class="text-dark fw-bold">{{ pago.fecha_pago|date:"d/m/Y" }}</small></td>
+                        <td class="col-proveedor">
+                            <span class="fw-bold text-primary"><i class="fa-solid fa-building me-1"></i>{{ pago.proveedor.nombre_empresa }}</span>
+                            <div class="small text-muted">RIF: {{ pago.proveedor.rif }}</div>
+                        </td>
+                        <td class="col-empresa">
+                            <span class="badge bg-secondary">{{ pago.solicitud.empresa_destino.nombre }}</span>
+                        </td>
+                        <td><strong class="text-success fs-6">${{ pago.monto_pagado }}</strong></td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-1">
+                                {% if pago.factura %}
+                                    <a href="{{ pago.factura.url }}" target="_blank" class="btn btn-outline-danger btn-sm" title="Ver Factura PDF/Imagen">
+                                        <i class="fa-solid fa-file-pdf"></i> Factura
+                                    </a>
+                                {% endif %}
+                                {% if pago.comprobante_pago %}
+                                    <a href="{{ pago.comprobante_pago.url }}" target="_blank" class="btn btn-outline-success btn-sm" title="Ver Comprobante">
+                                        <i class="fa-solid fa-receipt"></i> Pago
+                                    </a>
+                                {% endif %}
+                                {% if not pago.factura and not pago.comprobante_pago %}
+                                    <span class="badge bg-light text-muted">Sin Adjuntos</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-primary btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalVistaPreliminar{{ pago.id }}">
+                                <i class="fa-solid fa-eye me-1"></i> Ficha Preliminar
+                            </button>
+
+                            <!-- Modal de Vista Preliminar por Compra -->
+                            <div class="modal fade" id="modalVistaPreliminar{{ pago.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-lg modal-dialog-centered">
+                                    <div class="modal-content text-start">
+                                        <div class="modal-header bg-primary text-white">
+                                            <h6 class="modal-title fw-bold">
+                                                <i class="fa-solid fa-file-invoice me-2"></i>Ficha Preliminar de Auditoría Contable - Ticket #{{ pago.solicitud.ticket_glpi }}
+                                            </h6>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row g-3 mb-3">
+                                                <div class="col-md-6">
+                                                    <div class="p-2 border rounded bg-light">
+                                                        <small class="text-muted d-block">PROVEEDOR ADJUDICADO</small>
+                                                        <strong class="text-primary fs-6">{{ pago.proveedor.nombre_empresa }}</strong>
+                                                        <div class="small">RIF: {{ pago.proveedor.rif }}</div>
+                                                        <div class="small">Tel: {{ pago.proveedor.telefono|default:"N/A" }}</div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="p-2 border rounded bg-light">
+                                                        <small class="text-muted d-block">EMPRESA DESTINO HOLDING</small>
+                                                        <strong class="text-dark fs-6">{{ pago.solicitud.empresa_destino.nombre }}</strong>
+                                                        <div class="small">Fecha Pago: {{ pago.fecha_pago|date:"d/m/Y" }}</div>
+                                                        <div class="small text-success fw-bold">Monto Pagado: ${{ pago.monto_pagado }}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <h6 class="fw-bold text-secondary mb-2"><i class="fa-solid fa-list-check me-1"></i>Desglose por Línea Adjudicada:</h6>
+                                            <div class="p-3 border rounded bg-white mb-3" style="max-height: 180px; overflow-y: auto;">
+                                                <pre class="mb-0 text-dark font-monospace small" style="white-space: pre-wrap;">{{ pago.descripcion_adjudicacion|default:"No se registraron líneas desglosadas." }}</pre>
+                                            </div>
+
+                                            <div class="d-flex justify-content-around p-2 bg-light border rounded">
+                                                <div>
+                                                    <strong class="small d-block me-2">Factura PDF/Imagen:</strong>
+                                                    {% if pago.factura %}
+                                                        
+                                                    {% else %}
+                                                        <span class="text-muted small">No adjuntada</span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="border-start ps-3">
+                                                    <strong class="small d-block me-2">Comprobante de Pago:</strong>
+                                                    {% if pago.comprobante_pago %}
+                                                        <a href="{{ pago.comprobante_pago.url }}" target="_blank" class="btn btn-success btn-sm mt-1 fw-bold">
+                                                            <i class="fa-solid fa-receipt me-1"></i> Abrir Comprobante
+                                                        </a>
+                                                    {% else %}
+                                                        <span class="text-muted small">No adjuntado</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar Ficha</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center py-4 text-muted">No hay facturas registradas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function filtrarFacturas() {
+        let busqueda = document.getElementById("buscarFact").value.toLowerCase();
+        let empSel = document.getElementById("filtroEmpresaFact").value.toLowerCase();
+        let provSel = document.getElementById("filtroProvFact").value.toLowerCase();
+
+        let filas = document.querySelectorAll("#tablaFacturas tbody tr");
+
+        filas.forEach(row => {
+            let textoFila = row.innerText.toLowerCase();
+            let celdaEmpresa = row.querySelector(".col-empresa") ? row.querySelector(".col-empresa").innerText.toLowerCase() : "";
+            let celdaProv = row.querySelector(".col-proveedor") ? row.querySelector(".col-proveedor").innerText.toLowerCase() : "";
+
+            let cumpleBusqueda = !busqueda || textoFila.includes(busqueda);
+            let cumpleEmpresa = !empSel || celdaEmpresa.includes(empSel);
+            let cumpleProv = !provSel || celdaProv.includes(provSel);
+
+            if (cumpleBusqueda && cumpleEmpresa && cumpleProv) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        });
+    }
+</script>
+{% endblock %}

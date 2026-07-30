@@ -1,0 +1,139 @@
+{% extends "admin/change_form.html" %}
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<style>
+    /* Ocultar accesos directos obsoletos de fechas en primera sección */
+    .field-fecha_registro .datetimeshortcuts,
+    .field-fecha_solicitud .datetimeshortcuts {
+        display: none !important;
+    }
+</style>
+<script>
+(function($) {
+    $(document).ready(function() {
+        console.log("=== AUTOFILL & LOCK EMPRESA / FECHA SOLICITUD ===");
+
+        // Función para bloquear el selector de Empresa del Holding
+        function bloquearEmpresa() {
+            var $empresaSelect = $("select[name*='empresa'], select[id*='empresa']");
+            $empresaSelect.css({
+                "background-color": "#eef2f5",
+                "pointer-events": "none",
+                "cursor": "not-allowed",
+                "border": "1px solid #ccc"
+            }).attr("tabindex", "-1");
+            
+            // Ocultar botones de agregar/editar/ver empresa al lado del desplegable
+            $empresaSelect.siblings(".related-widget-wrapper-link, .add-related, .change-related, .delete-related, .view-related").hide();
+        }
+
+        // Función para bloquear la Fecha de Solicitud
+        function bloquearFechaSolicitud(fechaValor) {
+            $("label").each(function() {
+                var txt = $(this).text().toLowerCase();
+                if (txt.includes("fecha de solicitud") || txt.includes("fecha solicitud") || txt.includes("fecha de registro")) {
+                    var $container = $(this).closest("div, .form-row, .fieldBox, td, p");
+                    var $field = $container.find("input");
+                    
+                    $container.find(".datetimeshortcuts").hide();
+
+                    $field.prop("readonly", true).css({
+                        "background-color": "#eef2f5",
+                        "cursor": "not-allowed",
+                        "pointer-events": "none",
+                        "border": "1px solid #ccc",
+                        "color": "#333"
+                    });
+
+                    if (fechaValor) {
+                        $field.val(fechaValor).trigger("change");
+                    }
+                }
+            });
+        }
+
+        bloquearEmpresa();
+        bloquearFechaSolicitud();
+
+        function aplicarDatos(data) {
+            if (!data || data.error) return;
+
+            // 1. Solicitante / Email
+            var email = data.persona_solicito || "";
+            $("label").each(function() {
+                var txt = $(this).text().toLowerCase();
+                if (txt.includes("persona") || txt.includes("solicitó") || txt.includes("email")) {
+                    $(this).closest("div, .form-row, .fieldBox, td, p").find("input").val(email).trigger("change");
+                }
+            });
+
+            // 2. Ticket y Título
+            $("[name='numero_ticket'], #id_numero_ticket, input[name*='ticket'], input[name*='glpi']").val(data.numero_ticket || "").trigger("change");
+            $("[name='titulo'], #id_titulo, input[name*='titulo']").val(data.titulo || "").trigger("change");
+
+            // 3. Auto-seleccionar y bloquear Empresa del Holding Asignada
+            var $empresaSelect = $("select[name*='empresa'], select[id*='empresa']");
+            if (data.empresa_id) {
+                $empresaSelect.val(data.empresa_id).trigger("change");
+            } else if (data.empresa_nombre) {
+                $empresaSelect.find("option").each(function() {
+                    if ($(this).text().toLowerCase().includes(data.empresa_nombre.toLowerCase())) {
+                        $(this).prop("selected", true).trigger("change");
+                    }
+                });
+            }
+            bloquearEmpresa();
+
+            // 4. Auto-completar Fecha de Solicitud
+            if (data.fecha) {
+                bloquearFechaSolicitud(data.fecha);
+            }
+
+            // 5. Rellenar Desglose de Ítems
+            if (data.desglose) {
+                $("#id_desglose_items, textarea[name='desglose_items']").val(data.desglose).trigger("input").trigger("change");
+
+                var $groupItems = $("#itemcomprainventario_set-group, #items_inventario-group");
+                if ($groupItems.length === 0) {
+                    $groupItems = $("input[name*='producto_item']").closest(".inline-group");
+                }
+
+                if ($groupItems.length > 0) {
+                    var lineas = data.desglose.split(String.fromCharCode(10));
+
+                    $.each(lineas, function(idx, lineaText) {
+                        var txt = $.trim(lineaText);
+                        if (!txt) return;
+
+                        var $inputs = $groupItems.find("input[name*='producto_item']");
+
+                        if (idx < $inputs.length) {
+                            $inputs.eq(idx).val(txt).trigger("change");
+                        } else {
+                            $groupItems.find(".add-row a").click();
+                            $groupItems.find("input[name*='producto_item']").eq(idx).val(txt).trigger("change");
+                        }
+                    });
+                }
+            }
+        }
+
+        function pedirAPI(idVal) {
+            if (!idVal) return;
+            $.getJSON("/api/requerimiento/" + idVal + "/", function(data) {
+                aplicarDatos(data);
+            });
+        }
+
+        $(document).on("change", "select[name*='requerimiento'], select[id*='requerimiento']", function() {
+            pedirAPI($(this).val());
+        });
+
+        var initVal = $("select[name*='requerimiento'], select[id*='requerimiento']").val();
+        if (initVal) {
+            pedirAPI(initVal);
+        }
+    });
+})(django.jQuery || jQuery);
+</script>
+{% endblock %}

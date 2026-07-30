@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-3 mb-4">
+    <!-- Tarjetas de Resumen KPI -->
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-start border-primary border-4 p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small fw-bold">{% if request.user.perfil.rol != SOLICITANTE %}TOTAL PROVEEDORES</div>
+                    <div class="h3 fw-bold mb-0 text-primary">{{ total_proveedores }}</div>
+                </div>
+                <div class="fs-1 text-primary opacity-25"><i class="fa-solid fa-truck"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-start border-success border-4 p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small fw-bold">EMPRESAS HOLDING</div>
+                    <div class="h3 fw-bold mb-0 text-success">{{ total_holding }}</div>
+                </div>
+                <div class="fs-1 text-success opacity-25"><i class="fa-solid fa-building"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-start border-warning border-4 p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small fw-bold">COMPRAS REGISTRADAS</div>
+                    <div class="h3 fw-bold mb-0 text-warning">{{ total_compras }}</div>
+                </div>
+                <div class="fs-1 text-warning opacity-25"><i class="fa-solid fa-cart-shopping"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 border-start border-info border-4 p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="text-muted small fw-bold">EQUIPOS EN INVENTARIO</div>
+                    <div class="h3 fw-bold mb-0 text-info">{{ total_inventario }}</div>
+                </div>
+                <div class="fs-1 text-info opacity-25"><i class="fa-solid fa-boxes-stacked"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Fila de Gráficos Dinámicos Executivos -->
+<div class="row g-3 mb-4">
+    <div class="col-md-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 fw-bold text-primary">
+                <i class="fa-solid fa-chart-column me-2"></i>Gastos Totales Acumulados ($) por Empresa Holding
+            </div>
+            <div class="card-body">
+                <canvas id="chartGastos" style="max-height: 280px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3 fw-bold text-primary">
+                <i class="fa-solid fa-chart-pie me-2"></i>Distribución de Inventario por Estatus
+            </div>
+            <div class="card-body">
+                <canvas id="chartInventario" style="max-height: 280px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Requerimientos Pendientes y ÚLtimas Compras -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 fw-bold text-dark">
+                <i class="fa-solid fa-clock-rotate-left me-2 text-warning"></i>Requerimientos Pendientes
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for req in req_pendientes %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <strong class="text-dark">{{ req.titulo }}</strong>
+                            <div class="small text-muted">{{ req.empresa_holding.nombre }} | Por: {{ req.solicitante.username }}</div>
+                        </div>
+                        <span class="badge bg-warning text-dark">{{ req.get_estatus_display }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-center py-3 text-muted">No hay requerimientos pendientes.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 fw-bold text-dark">
+                <i class="fa-solid fa-receipt me-2 text-success"></i>Últimas Compras Adjudicadas{% endif %}
+            </div>
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    {% for comp in ultimas_compras %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center py-3">
+                        <div>
+                            <strong class="text-dark">#{{ comp.ticket_glpi }} - {{ comp.titulo_requerimiento }}</strong>
+                            <div class="small text-muted">{{ comp.empresa_destino.nombre }} | {{ comp.fecha_registro|date:"d/m/Y" }}</div>
+                        </div>
+                        <span class="badge bg-success">${{ comp.total_compra }}</span>
+                    </li>
+                    {% empty %}
+                    <li class="list-group-item text-center py-3 text-muted">No hay compras registradas.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Incluir Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // Gráfico 1: Gastos por Empresa
+        const ctxGastos = document.getElementById('chartGastos').getContext('2d');
+        new Chart(ctxGastos, {
+            type: 'bar',
+            data: {
+                labels: {{ labels_gastos|safe }},
+                datasets: [{
+                    label: 'Monto Pagado ($)',
+                    data: {{ data_gastos|safe }},
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Gráfico 2: Inventario por Estatus
+        const ctxInv = document.getElementById('chartInventario').getContext('2d');
+        new Chart(ctxInv, {
+            type: 'doughnut',
+            data: {
+                labels: {{ labels_inv|safe }},
+                datasets: [{
+                    data: {{ data_inv|safe }},
+                    backgroundColor: ['#0d6efd', '#0dcaf0', '#198754', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    });
+</script>
+{% endblock %}

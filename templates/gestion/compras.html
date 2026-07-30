@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card shadow border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center row g-2">
+        <div class="col-md-5">
+            <h5 class="mb-0 fw-bold"><i class="fa-solid fa-cart-shopping text-primary me-2"></i>Solicitudes y Registro de Compras</h5>
+        </div>
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" id="buscarCom" class="form-control" onkeyup="filtrarTabla('buscarCom', 'tablaCompras')" placeholder="Buscar por N° de Ticket, requerimiento...">
+            </div>
+        </div>
+        <div class="col-md-3 text-end">
+            <a href="/admin/gestion/registrocomprapago/add/" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-plus me-1"></i> Nueva Compra / Pago
+            </a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tablaCompras">
+                <thead class="table-light">
+                    <tr>
+                        <th>N° Ticket</th>
+                        <th>Requerimiento / Asunto</th>
+                        <th>Empresa Asignada</th>
+                        <th>Estatus</th>
+                        <th>Proveedor Adjudicado</th>
+                        <th>Total Pagado</th>
+                        <th>Fecha</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in compras %}
+                    <tr>
+                        <td class="fw-bold text-primary">#{{ c.ticket_glpi }}</td>
+                        <td>
+                            <div class="fw-bold">{{ c.titulo_requerimiento }}</div>
+                            <small class="text-muted">{{ c.desglose_items|truncatewords:8 }}</small>
+                        </td>
+                        <td><span class="badge bg-secondary">{{ c.empresa_destino.nombre }}</span></td>
+                        <td>
+                            {% if c.estatus == 'COMPRADO' %}
+                                <span class="badge bg-success">Comprado</span>
+                            {% elif c.estatus == 'COTIZANDO' %}
+                                <span class="badge bg-warning text-dark">Cotizando</span>
+                            {% elif c.estatus == 'TRANSITO' %}
+                                <span class="badge bg-info text-dark">En Tránsito</span>
+                            {% else %}
+                                <span class="badge bg-primary">Asignado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% with c.pagos_proveedores.first as p %}
+                                {% if p %}
+                                    <strong class="text-dark">{{ p.proveedor.nombre_empresa }}</strong>
+                                {% else %}
+                                    <span class="text-muted small">Sin adjudicar</span>
+                                {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            <strong class="text-success">${{ c.total_compra }}</strong>
+                            <small class="text-muted d-block">{{ c.get_moneda_display }}</small>
+                        </td>
+                        <td><small>{{ c.fecha_registro }}</small></td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm">
+                                <a href="/admin/gestion/registrocomprapago/{{ c.id }}/change/" class="btn btn-warning btn-sm text-dark" title="Modificar / Subir Facturas">
+                                    <i class="fa-solid fa-pen-to-square me-1"></i> Gestionar
+                                </a>
+                                
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center py-4 text-muted">No hay compras o registros de pago procesados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

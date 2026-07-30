@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-3">
+    <!-- Formulario visible SOLO para usuarios Solicitantes (NO Staff) -->
+    {% if not user.is_staff %}
+    <div class="col-md-4">
+        <div class="card shadow border-0">
+            <div class="card-header bg-primary text-white py-3">
+                <h6 class="mb-0 fw-bold"><i class="fa-solid fa-paper-plane me-2"></i>Nuevo Requerimiento</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Empresa Solicitante del Holding</label>
+                        <select name="empresa_holding" class="form-select" required>
+                            <option value="">-- Seleccionar Empresa --</option>
+                            {% for h in holdings %}
+                                <option value="{{ h.id }}">{{ h.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Título / Asunto</label>
+                        <input type="text" name="titulo" class="form-control" placeholder="Ej: Material de tecnología" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Lista / Desglose de Materiales</label>
+                        <textarea name="desglose_items" class="form-control" rows="5" placeholder="INDICAR CANTIDAD Y MATERIAL" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 fw-bold py-2">
+                        <i class="fa-solid fa-check me-1"></i> Registrar Solicitud
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de Requerimientos (Ocupa col-12 para Compras/Admin y col-8 para Solicitantes) -->
+    <div class="{% if user.is_staff %}col-md-12{% else %}col-md-8{% endif %}">
+        <div class="card shadow border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-primary"><i class="fa-solid fa-list-check me-2"></i>Requerimientos Solicitados</h6>
+                <div class="d-flex align-items-center gap-2 w-50">
+                    <small class="text-muted"><i class="fa-solid fa-arrows-rotate fa-spin text-success me-1"></i> En vivo</small>
+                    <input type="text" id="buscarReq" class="form-control form-control-sm" onkeyup="filtrarTabla('buscarReq', 'tablaReq')" placeholder="Buscar por título, estatus, solicitante...">
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tablaReq">
+                        <thead class="table-light">
+                            <tr>
+                                <th>N° Ticket</th>
+                                <th>Título y Desglose</th>
+                                <th>Empresa</th>
+                                <th>Solicitado Por</th>
+                                <th>Estatus</th>
+                                {% if user.is_staff %}
+                                    <th class="text-center">Acciones Compras</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in tickets %}
+                            <tr>
+                                <td>
+                                    <strong class="text-primary">{% if t.ticket_glpi %}{{ t.ticket_glpi }}{% else %}REQ-{{ t.id|stringformat:"04d" }}{% endif %}</strong>
+                                    <br><small class="text-muted">{{ t.creado_el|date:"d/m/Y H:i" }}</small>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">{{ t.titulo }}</div>
+                                    <small class="text-secondary">{{ t.desglose_items|linebreaksbr }}</small>
+                                </td>
+                                <td><span class="badge bg-secondary">{{ t.empresa_holding.nombre }}</span></td>
+                                <td><small><i class="fa-solid fa-user me-1"></i>{{ t.solicitante.username }}</small></td>
+                                <td>
+                                    {% if t.estatus == 'PENDIENTE' %}
+                                        <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> Pendiente</span>
+                                    {% elif t.estatus == 'EN_CURSO' %}
+                                        <span class="badge bg-info text-dark"><i class="fa-solid fa-spinner fa-spin me-1"></i> En Curso / Cotizando</span>
+                                    {% elif t.estatus == 'PROCESADO' %}
+                                        <span class="badge bg-success"><i class="fa-solid fa-circle-check me-1"></i> Procesado / Comprado</span>
+                                    {% else %}
+                                        <span class="badge bg-danger"><i class="fa-solid fa-circle-xmark me-1"></i> Rechazado</span>
+                                    {% endif %}
+                                </td>
+                                {% if user.is_staff %}
+                                <td class="text-center">
+                                    {% if t.estatus == 'PENDIENTE' %}
+                                        <a href="{% url 'cambiar_estatus_ticket' t.id 'EN_CURSO' %}" class="btn btn-outline-info btn-sm mb-1" title="Marcar En Curso">
+                                            <i class="fa-solid fa-play me-1"></i> En Curso
+                                        </a>
+                                    {% endif %}
+                                    <a href="/admin/gestion/requerimientoticket/{{ t.id }}/change/" class="btn btn-warning btn-sm text-dark" title="Editar">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="6" class="text-center py-4 text-muted">No hay requerimientos registrados.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    setInterval(function() {
+        let inputBuscador = document.getElementById("buscarReq");
+        let activo = document.activeElement;
+        
+        if (activo.tagName !== 'INPUT' && activo.tagName !== 'TEXTAREA') {
+            fetch(window.location.href)
+                .then(response => response.text())
+                .then(html => {
+                    let parser = new DOMParser();
+                    let doc = parser.parseFromString(html, 'text/html');
+                    let nuevaTabla = doc.getElementById('tablaReq').innerHTML;
+                    document.getElementById('tablaReq').innerHTML = nuevaTabla;
+                });
+        }
+    }, 5000);
+</script>
+{% endblock %}

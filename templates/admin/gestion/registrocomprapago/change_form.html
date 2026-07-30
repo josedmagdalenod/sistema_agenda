@@ -1,0 +1,53 @@
+{% extends "admin/change_form.html" %}
+{% block footer %}
+{{ block.super }}
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+(function($) {
+    $(document).ready(function() {
+        console.log("🚀 [AUTOFILL JQUERY] Iniciando listener en Django Admin...");
+
+        // Función principal de llenado
+        function ejecutarAutofill(ticketId) {
+            if (!ticketId) return;
+
+            console.log("🔄 Obteniendo datos para Ticket ID:", ticketId);
+
+            $.getJSON("/api/requerimiento/" + ticketId + "/", function(data) {
+                console.log("📦 Datos recibidos:", data);
+                if (data.error) return;
+
+                // Forzar asignación de valores a los inputs del Admin
+                $("input[name='persona_solicito'], #id_persona_solicito").val(data.persona_solicito || data.solicitante || "");
+                $("input[name='numero_ticket'], #id_numero_ticket").val(data.numero_ticket || "");
+                $("input[name='titulo'], #id_titulo").val(data.titulo || "");
+                $("input[name='fecha_solicitud'], #id_fecha_solicitud").val(data.fecha || "");
+                $("textarea[name='desglose'], #id_desglose").val(data.desglose || "");
+                
+                if (data.empresa_id) {
+                    $("select[name='empresa'], #id_empresa").val(data.empresa_id).trigger("change");
+                }
+            }).fail(function(err) {
+                console.error("❌ Error consumiendo API:", err);
+            });
+        }
+
+        // Escuchar cambios en CUALQUIER select dentro del bloque 1
+        $(document).on("change", "select", function() {
+            var val = $(this).val();
+            if (val && !isNaN(val)) {
+                ejecutarAutofill(val);
+            }
+        });
+
+        // Ejecutar inmediatamente al abrir si ya hay algo seleccionado
+        var selectInicial = $("select[name*='requerimiento']").val() || $("select").first().val();
+        if (selectInicial && !isNaN(selectInicial)) {
+            ejecutarAutofill(selectInicial);
+        }
+    });
+})(jQuery || django.jQuery);
+</script>
+
+{% endblock %}

@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+    .table-inventario {
+        table-layout: fixed;
+        width: 100%;
+        min-width: 1200px;
+    }
+    .table-inventario th, .table-inventario td {
+        vertical-align: middle;
+        font-size: 0.88rem;
+        padding: 0.6rem 0.4rem;
+    }
+    .badge-empresa {
+        white-space: normal !important;
+        word-break: break-word;
+        max-width: 120px;
+        display: inline-block;
+        padding: 6px 8px;
+    }
+</style>
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="font-weight-bold text-primary mb-0"><i class="fas fa-boxes"></i> Control de Inventario y Equipos</h3>
+        <div class="d-flex align-items-center gap-2">
+            <div class="input-group input-group-sm" style="width: 320px;">
+                <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="inputBuscarInventario" class="form-control" placeholder="Buscar por producto, serial, empresa..." onkeyup="filtrarTablaInventario()">
+            </div>
+            <a href="#" class="btn btn-success btn-sm font-weight-bold"><i class="fas fa-file-excel"></i> Exportar Excel (.xlsx)</a>
+            <a href="#" class="btn btn-danger btn-sm font-weight-bold"><i class="fas fa-file-pdf"></i> Reporte PDF</a>
+        </div>
+    </div></div>
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-2">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle table-inventario">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 16%;">Producto / Modelo</th>
+                            <th style="width: 14%;">Serial / Código</th>
+                            <th style="width: 6%; text-align: center;">Cant.</th>
+                            <th style="width: 15%;">Proveedor</th>
+                            <th style="width: 8%;">Costo Unit.</th>
+                            <th style="width: 8%;">Costo Total</th>
+                            <th style="width: 8%;">Fecha Compra</th>
+                            <th style="width: 10%;">Empresa Origen</th>
+                            <th style="width: 10%;">Empresa Asignada</th>
+                            <th style="width: 6%;">Estatus</th>
+                            <th style="width: 7%; text-align: center;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr id="row-item-{{ item.id }}">
+                            <td class="font-weight-bold">
+                                {{ item.producto_marca_modelo|default:item }}
+                            </td>
+                            <td>
+                                {% if item.serial_limpio %}
+                                    <span class="badge bg-dark" style="font-size: 0.8rem;">
+                                        {{ item.serial_limpio }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">Sin Serial</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <span class="badge bg-warning text-dark">{{ item.cantidad_real }} Unid.</span>
+                            </td>
+                            <td>
+                                {% if item.proveedor %}
+                                    <span class="text-primary font-weight-bold small"><i class="fas fa-building"></i> {{ item.proveedor }}</span>
+                                {% else %}
+                                    <span class="text-muted small">No especificado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>${{ item.costo_unitario|default:"0.00" }}</strong>
+                            </td>
+                            <td class="text-success font-weight-bold">
+                                ${{ item.costo_unitario|default:"0.00" }}
+                            </td>
+                            <td>{{ item.fecha_compra|date:"d/m/Y"|default:"25/07/2026" }}</td>
+                            <td>
+                                <span class="badge bg-secondary badge-empresa">
+                                    {{ item.empresa_origen.nombre|default:"WIWU" }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-dark badge-empresa">
+                                    {{ item.empresa_asignada.nombre|default:"Sin Asignar" }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if item.estatus == 'Asignado' or item.estatus == 'ASIGNADO' %}
+                                    <span class="badge bg-info text-white">Asignado</span>
+                                {% else %}
+                                    <span class="badge bg-primary">En Stock</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold" onclick="abrirModalTransferir('{{ item.id }}', '{{ item.producto_marca_modelo|escapejs }}')">
+                                        ⇄
+                                    </button>
+                                    <a href="/admin/gestion/inventario/{{ item.id }}/change/" class="btn btn-warning btn-sm" title="Editar"><i class="fas fa-edit"></i></a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="11" class="text-center text-muted py-4">No hay equipos en inventario.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Transferir Equipo -->
+<div class="modal fade" id="modalTransferir" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-exchange-alt"></i> Transferir Equipo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formTransferir" onsubmit="guardarTransferencia(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="transfer_item_id" name="item_id">
+                    <p class="mb-3"><strong>Equipo a transferir:</strong> <span id="transfer_item_nombre" class="text-primary font-weight-bold"></span></p>
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold">Seleccionar Empresa Asignada (Destino):</label>
+                        <select class="form-select" id="empresa_destino" name="empresa_destino" required>
+                            <option value="">-- Seleccionar Empresa --</option>
+                            {% for emp in empresas %}
+                                <option value="{{ emp.id }}">{{ emp.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary font-weight-bold">Confirmar Transferencia</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalTransferir(itemId, nombre) {
+    document.getElementById('transfer_item_id').value = itemId;
+    document.getElementById('transfer_item_nombre').innerText = nombre;
+    var modalEl = document.getElementById('modalTransferir');
+    var myModal = new bootstrap.Modal(modalEl);
+    myModal.show();
+}
+
+function guardarTransferencia(e) {
+    e.preventDefault();
+    var itemId = document.getElementById('transfer_item_id').value;
+    var empresaId = document.getElementById('empresa_destino').value;
+
+    fetch('/inventario/transferir/' + itemId + '/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: 'empresa_destino=' + encodeURIComponent(empresaId)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'ok') {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'No se pudo realizar la transferencia'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Ocurrió un error al procesar la transferencia.');
+    });
+}
+</script>
+{% endblock %}

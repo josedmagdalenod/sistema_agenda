@@ -1,0 +1,16 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | CRYPCHANGE HOLDING Admin{% endblock %}
+
+{% block branding %}
+<div id="site-name" style="display: flex; align-items: center; gap: 15px;">
+    <a href="javascript:void(0);" onclick="if(document.referrer && !document.referrer.includes(window.location.pathname)){ window.location.href = document.referrer; } else { window.history.back(); }" class="button btn-dashboard" style="background:#2563eb; color:#fff; padding:6px 12px; border-radius:4px; text-decoration:none; font-weight:bold; display:inline-block; margin-right:15px;">← Volver a la Ventana Anterior</a>
+    <h1 id="site-name" style="margin: 0;">
+        <a href="{% url 'admin:index' %}" style="color: #f3f4f6; font-weight: bold;">
+            CRYPCHANGE HOLDING — Administración
+        </a>
+    </h1>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

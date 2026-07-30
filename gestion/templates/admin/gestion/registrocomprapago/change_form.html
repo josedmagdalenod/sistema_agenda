@@ -1,0 +1,70 @@
+{% extends "admin/change_form.html" %}
+{% block footer %}
+{{ block.super }}
+
+<script>
+(function() {
+    console.log("🚀 [AUTOFILL] Cargando autocompletado en Admin...");
+
+    function initAutofill() {
+        var reqSelect = document.querySelector("#id_requerimiento_en_curso") || 
+                        document.querySelector("select[name='requerimiento_en_curso']") ||
+                        document.querySelector("#id_requerimiento") ||
+                        document.querySelector("select[name='requerimiento']");
+
+        if (!reqSelect) {
+            console.warn("⚠️ [AUTOFILL] Selector no encontrado en este formulario.");
+            return;
+        }
+
+        console.log("✅ [AUTOFILL] Selector encontrado:", reqSelect.id || reqSelect.name);
+
+        function fillForm(data) {
+            console.log("📦 [AUTOFILL] Rellenando datos:", data);
+            if (data.error) return;
+
+            var fields = {
+                persona: document.querySelector("#id_persona_solicito") || document.querySelector("input[name='persona_solicito']"),
+                ticket: document.querySelector("#id_numero_ticket") || document.querySelector("input[name='numero_ticket']"),
+                titulo: document.querySelector("#id_titulo") || document.querySelector("input[name='titulo']"),
+                empresa: document.querySelector("#id_empresa") || document.querySelector("select[name='empresa']"),
+                fecha: document.querySelector("#id_fecha_solicitud") || document.querySelector("input[name='fecha_solicitud']"),
+                desglose: document.querySelector("#id_desglose") || document.querySelector("textarea[name='desglose']")
+            };
+
+            if (fields.persona) fields.persona.value = data.persona_solicito || data.solicitante || "";
+            if (fields.ticket) fields.ticket.value = data.numero_ticket || "";
+            if (fields.titulo) fields.titulo.value = data.titulo || "";
+            if (fields.fecha && data.fecha) fields.fecha.value = data.fecha;
+            if (fields.desglose) fields.desglose.value = data.desglose || "";
+            if (fields.empresa && data.empresa_id) fields.empresa.value = data.empresa_id;
+        }
+
+        function loadData() {
+            var id = reqSelect.value;
+            if (!id) return;
+
+            console.log("🔄 [AUTOFILL] Solicitando API: /api/requerimiento/" + id + "/");
+
+            fetch("/api/requerimiento/" + id + "/")
+                .then(function(res) { return res.json(); })
+                .then(function(data) { fillForm(data); })
+                .catch(function(err) { console.error("❌ [AUTOFILL] Error:", err); });
+        }
+
+        reqSelect.addEventListener("change", loadData);
+
+        if (reqSelect.value) {
+            loadData();
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initAutofill);
+    } else {
+        initAutofill();
+    }
+})();
+</script>
+
+{% endblock %}
