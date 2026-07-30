@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-r$s%ul!k(=8j51%hkjd-@mgj86tg-qlf=i3a8=1h*a-le5p&-$
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['10.20.22.3']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -83,7 +83,7 @@ DATABASES = {
         'NAME': 'agenda_db',
         'USER': 'agenda_user',
         'PASSWORD': 'Inventario2026*', # La misma contraseña que creaste en el PASO 2 de PostgreSQL
-        'HOST': 'localhost',
+        'HOST': '10.20.22.3',
         'PORT': '5432',
     }
 }
