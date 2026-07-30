@@ -58,8 +58,40 @@ class RequerimientoTicketAdmin(admin.ModelAdmin):
 
 @admin.register(Proveedor)
 class ProveedorAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre_empresa', 'rubro', 'rif', 'telefono', 'email')
+    list_display = ('id', 'nombre_empresa', 'rubro', 'rif', 'telefono', 'email', 'verificado')
     search_fields = ('nombre_empresa', 'rubro', 'rif', 'email')
+    change_form_template = 'admin/gestion/proveedor/change_form.html'
+
+    fieldsets = (
+        (None, {'fields': ('rubro', 'nombre_empresa', 'rif', 'telefono', 'email', 'direccion', 'documento_rif', 'acta_constitutiva', 'otros_documentos')}),
+        ('Verificación (auditor)', {
+            'fields': (
+                'nombre_empresa_verificado', 'rif_verificado', 'telefono_verificado', 'email_verificado',
+                'direccion_verificada', 'documento_rif_verificado', 'acta_constitutiva_verificada', 'verificado'
+            ),
+            'description': 'Marcar cada ítem verificado por el auditor. El checkbox "Proveedor verificado" sólo se habilita cuando todos los ítems estén marcados.'
+        }),
+    )
+
+    class Media:
+        js = ('gestion/js/admin_proveedor_verificacion.js',)
+
+    def save_model(self, request, obj, form, change):
+        # Validación en servidor: sólo permitir marcar 'verificado' si todos los ítems están verificados
+        all_checked = all([
+            obj.nombre_empresa_verificado,
+            obj.rif_verificado,
+            obj.telefono_verificado,
+            obj.email_verificado,
+            obj.direccion_verificada,
+            obj.documento_rif_verificado,
+            obj.acta_constitutiva_verificada,
+        ])
+        if obj.verificado and not all_checked:
+            from django.contrib import messages
+            messages.error(request, "No puede marcar 'Verificado' hasta que todos los ítems estén verificados.")
+            obj.verificado = False
+        super().save_model(request, obj, form, change)
 
 @admin.register(EmpresaHolding)
 class EmpresaHoldingAdmin(admin.ModelAdmin):

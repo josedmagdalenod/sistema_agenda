@@ -32,7 +32,7 @@ def guardar_perfil_usuario(sender, instance, **kwargs):
 
 class Proveedor(models.Model):
     RUBRO_CHOICES = [
-        ('Tecnología / Informática', 'Tecnología / Informática'),
+        ('Tecnologia / Informática', 'Tecnología / Informática'),
         ('Ferretería / Materiales de Construcción', 'Ferretería / Materiales de Construcción'),
         ('Papelería / Material de Oficina', 'Papelería / Material de Oficina'),
         ('Mobiliario y Equipamiento', 'Mobiliario y Equipamiento'),
@@ -55,6 +55,18 @@ class Proveedor(models.Model):
     acta_constitutiva = models.FileField(upload_to='documentos_proveedores/actas/', blank=True, null=True, verbose_name="Acta Constitutiva")
     otros_documentos = models.FileField(upload_to='documentos_proveedores/otros/', blank=True, null=True, verbose_name="Otros Documentos")
 
+    # Campos de verificación por auditoría
+    nombre_empresa_verificado = models.BooleanField(default=False, verbose_name="Nombre de la empresa verificado")
+    rif_verificado = models.BooleanField(default=False, verbose_name="RIF verificado")
+    telefono_verificado = models.BooleanField(default=False, verbose_name="Teléfono verificado")
+    email_verificado = models.BooleanField(default=False, verbose_name="Correo electrónico verificado")
+    direccion_verificada = models.BooleanField(default=False, verbose_name="Dirección verificada")
+    documento_rif_verificado = models.BooleanField(default=False, verbose_name="Copia de RIF verificada")
+    acta_constitutiva_verificada = models.BooleanField(default=False, verbose_name="Acta constitutiva verificada")
+
+    # Bandera global que indica que el proveedor fue verificado por el auditor
+    verificado = models.BooleanField(default=False, verbose_name="Proveedor verificado")
+
     creado_el = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
 
@@ -64,6 +76,21 @@ class Proveedor(models.Model):
 
     def __str__(self):
         return f"{self.nombre_empresa} ({self.rif})"
+
+    def clean(self):
+        # Validación a nivel de modelo: no permitir verificado=True si faltan verificaciones individuales
+        from django.core.exceptions import ValidationError
+        all_checked = all([
+            self.nombre_empresa_verificado,
+            self.rif_verificado,
+            self.telefono_verificado,
+            self.email_verificado,
+            self.direccion_verificada,
+            self.documento_rif_verificado,
+            self.acta_constitutiva_verificada,
+        ])
+        if self.verificado and not all_checked:
+            raise ValidationError("No puede marcar 'verificado' hasta que todos los ítems estén verificados.")
 
 
 class EmpresaHolding(models.Model):

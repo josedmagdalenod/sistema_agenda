@@ -1,0 +1,24 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static %}
+
+{% block submit_buttons_bottom %}
+  {{ block.super }}
+  <div class="submit-row" style="margin-top:8px;">
+    <label for="submit_verificado" style="margin-right:8px; font-weight:bold;">Verificado por auditor:</label>
+    <input type="checkbox" id="submit_verificado" />
+  </div>
+  <script>
+  (function(){
+    function sync(){
+      var main = document.getElementById('id_verificado');
+      var sub = document.getElementById('submit_verificado');
+      if(!main || !sub) return;
+      sub.checked = main.checked;
+      sub.disabled = main.disabled;
+      sub.addEventListener('change', function(){ if(!main.disabled) main.checked = sub.checked; else sub.checked = main.checked; });
+      main.addEventListener('change', function(){ sub.checked = main.checked; sub.disabled = main.disabled; });
+    }
+    document.addEventListener('DOMContentLoaded', sync);
+  })();
+  </script>
+{% endblock %}
