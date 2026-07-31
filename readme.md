@@ -25,3 +25,8 @@ Busca el archivo config/settings.py y modifica
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 HOST': '10.20.22.3
 ``` 
+
+Sync
+```
+venv/bin/python3 /tmp/sync_all_proveedor_columns.py
+```
