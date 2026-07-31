@@ -2,7 +2,7 @@
 
 Crear carpta de la virtualizacion
 ```
-python -m venv venv
+python3 -m venv venv
 ```
 
 Inicia entorno virtual comando
